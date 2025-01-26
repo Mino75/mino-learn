@@ -1,0 +1,48 @@
+
+/** A simple button to execute the script without using console */
+
+<script>
+    // Zoom-Aware Slow Scrolling Script
+    function zoomAwareScroll(speed = 50) {
+        let scrollStep = Math.ceil(1 / window.devicePixelRatio); // Adjust step based on zoom level
+        let interval = speed;
+
+        console.log(`Scroll step: ${scrollStep}px per ${interval}ms (Zoom level: ${Math.round(window.devicePixelRatio * 100)}%)`);
+
+        let scroller = setInterval(() => {
+            if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight) {
+                clearInterval(scroller);
+                console.log("Reached the bottom of the page.");
+            } else {
+                window.scrollBy(0, scrollStep);
+            }
+        }, interval);
+
+        window.stopScroll = () => {
+            clearInterval(scroller);
+            console.log("Scrolling stopped.");
+        };
+    }
+
+    // Add a clickable button to trigger the scroll
+    document.addEventListener('DOMContentLoaded', () => {
+        let scrollButton = document.createElement('button');
+        scrollButton.textContent = "Start Slow Scroll";
+        scrollButton.style.position = "fixed";
+        scrollButton.style.bottom = "20px";
+        scrollButton.style.right = "20px";
+        scrollButton.style.padding = "10px 20px";
+        scrollButton.style.backgroundColor = "#007bff";
+        scrollButton.style.color = "#fff";
+        scrollButton.style.border = "none";
+        scrollButton.style.borderRadius = "5px";
+        scrollButton.style.cursor = "pointer";
+        scrollButton.style.zIndex = "1000";
+
+        scrollButton.addEventListener('click', () => {
+            zoomAwareScroll(50); // You can adjust the speed here
+        });
+
+        document.body.appendChild(scrollButton);
+    });
+</script>
