@@ -47,9 +47,9 @@
         menu.style.position = "fixed";
         menu.style.bottom = "70px";
         menu.style.right = "20px";
-        menu.style.backgroundColor = "transparent";
-        menu.style.border = "none";
-        menu.style.padding = "0";
+        menu.style.backgroundColor = "white";
+        menu.style.border = "1px solid #ddd";
+        menu.style.padding = "10px";
         menu.style.display = "none"; // Initially hidden
         menu.style.zIndex = "1000";
 
@@ -67,7 +67,7 @@
             button.style.cursor = "pointer";
             button.style.transition = "background-color 0.3s ease, transform 0.1s ease";
 
-            // Add hover and click animations
+            // Hover and click animations
             button.addEventListener('mouseenter', () => {
                 button.style.backgroundColor = "#0056b3";
             });
@@ -123,13 +123,13 @@
 
         // Function to check if a cell contains valid content
         function isValidCell(text) {
-            return text && !text.trim().startsWith("**"); // Ignore cells with "**" or empty content
+            return text && !/^\s*(\*\*\*|---)\s*$/.test(text); // Ignore empty or placeholder cells
         }
 
-        // Filter valid rows by checking all cells
+        // Select 10 random valid rows
         const validRows = rows.filter(row => {
             const cells = Array.from(row.querySelectorAll("td"));
-            return cells.every(cell => isValidCell(cell.textContent));
+            return cells.slice(1).some(cell => isValidCell(cell.textContent)); // At least one answer must be filled
         });
 
         if (validRows.length < 10) {
@@ -137,11 +137,10 @@
             return;
         }
 
-        // Select 10 random valid rows
-        const randomRows = validRows.sort(() => 0.5 - Math.random()).slice(0, 10);
+        let randomRows = validRows.sort(() => 0.5 - Math.random()).slice(0, 10);
         let score = 0;
 
-        // Create a container for the quiz
+        // Create a quiz container
         const quizContainer = document.createElement('div');
         quizContainer.style.position = "fixed";
         quizContainer.style.top = "10%";
@@ -152,79 +151,51 @@
         quizContainer.style.border = "2px solid #ddd";
         quizContainer.style.borderRadius = "10px";
         quizContainer.style.zIndex = "2000";
-        quizContainer.style.maxWidth = "80%";
         quizContainer.style.textAlign = "center";
 
         document.body.appendChild(quizContainer);
 
-        // Function to display a question
         function askQuestion(index) {
             if (index >= randomRows.length) {
-                // End of quiz
                 quizContainer.innerHTML = `<h3>Your score: ${score}/10</h3>`;
-                if (score >= 9) {
-                    showCelebration();
-                }
                 setTimeout(() => quizContainer.remove(), 5000);
                 return;
             }
 
             const row = randomRows[index];
             const cells = row.querySelectorAll("td");
-            const colIndex = Math.floor(Math.random() * 3) + 1; // Pick a random column for the answer
-            const question = cells[0].textContent.trim(); // Use the first column as the question
-            const originalAnswer = cells[colIndex].textContent.trim(); // Save the original answer
-            const correctAnswer = isAdvanced ? removeLatinCharacters(originalAnswer) : originalAnswer; // Clean answer for advanced mode
 
-            // Generate incorrect answers
-            const allAnswers = validRows.map(r => {
-                const text = r.querySelectorAll("td")[colIndex].textContent.trim();
-                return isValidCell(text) ? (isAdvanced ? removeLatinCharacters(text) : text) : null;
-            }).filter(answer => answer !== null && answer !== correctAnswer);
+            let colIndex = [1, 2, 3].find(i => isValidCell(cells[i].textContent));
+            if (colIndex === undefined) {
+                askQuestion(index + 1);
+                return;
+            }
 
-            const incorrectAnswers = allAnswers.sort(() => 0.5 - Math.random()).slice(0, 3);
+            const question = cells[0].textContent.trim();
+            const correctAnswer = cells[colIndex].textContent.trim();
+
+            let allAnswers = validRows
+                .map(r => {
+                    const text = r.querySelectorAll("td")[colIndex].textContent.trim();
+                    return isValidCell(text) && text !== correctAnswer ? text : null;
+                })
+                .filter(answer => answer !== null);
+
+            let incorrectAnswers = allAnswers.sort(() => 0.5 - Math.random()).slice(0, 3);
+            while (incorrectAnswers.length < 3) incorrectAnswers.push("???");
+
             const options = [correctAnswer, ...incorrectAnswers].sort(() => 0.5 - Math.random());
 
-            // Display the question and answer options
-            quizContainer.innerHTML = `<h3>What is the translation of "${question}"?</h3>`;
+            quizContainer.innerHTML = `<h3>What does "${question}" mean?</h3>`;
             options.forEach(option => {
                 const optionButton = document.createElement('button');
                 optionButton.textContent = option;
                 optionButton.style.margin = "10px";
-                optionButton.style.padding = "10px 20px";
-                optionButton.style.border = "2px solid #007bff";
-                optionButton.style.borderRadius = "5px";
                 optionButton.style.cursor = "pointer";
-                optionButton.style.backgroundColor = "#fff";
-                optionButton.style.color = "#007bff";
 
-                // Handle answer selection
                 optionButton.addEventListener('click', () => {
-                    if (option === correctAnswer) {
-                        optionButton.style.backgroundColor = "green";
-                        optionButton.style.color = "white";
-                        score++;
-                    } else {
-                        optionButton.style.backgroundColor = "red";
-                        optionButton.style.color = "white";
-                        Array.from(quizContainer.querySelectorAll('button')).forEach(btn => {
-                            if (btn.textContent === correctAnswer) {
-                                btn.style.backgroundColor = "green";
-                                btn.style.color = "white";
-                            }
-                        });
-                    }
-
-                    // Display the correction
-                    const correction = document.createElement('div');
-                    correction.innerHTML = `
-                        <p style="margin-top: 20px; color: #333;">
-                            <strong>Correct Answer:</strong> ${originalAnswer} <br>
-                            ${option === correctAnswer ? "You got it right! 🎉" : "You got it wrong. 😔"}
-                        </p>`;
-                    quizContainer.appendChild(correction);
-
-                    // Move to the next question after 2 seconds
+                    optionButton.style.backgroundColor = option === correctAnswer ? "green" : "red";
+                    if (option === correctAnswer) score++;
                     setTimeout(() => askQuestion(index + 1), 2000);
                 });
 
@@ -232,32 +203,6 @@
             });
         }
 
-        askQuestion(0); // Start the quiz
-    }
-
-    // Function to remove Latin characters (for Advanced Quiz)
-    function removeLatinCharacters(text) {
-        return text
-            .normalize("NFD") // Decompose characters (e.g., à -> a +  ̀)
-            .replace(/[a-zA-Z0-9\s\(\)\.\,\~\u0300-\u036f]/g, "") // Remove Latin, spaces, punctuation, and diacritics
-            .trim();
-    }
-
-    // Celebration animation
-    function showCelebration() {
-        const confetti = document.createElement('div');
-        confetti.textContent = "🎉🎊🎉";
-        confetti.style.position = "fixed";
-        confetti.style.top = "50%";
-        confetti.style.left = "50%";
-        confetti.style.transform = "translate(-50%, -50%)";
-        confetti.style.fontSize = "48px";
-        confetti.style.animation = "fadeout 2s ease-out forwards";
-
-        document.body.appendChild(confetti);
-
-        setTimeout(() => {
-            confetti.remove();
-        }, 2000);
+        askQuestion(0);
     }
 </script>
