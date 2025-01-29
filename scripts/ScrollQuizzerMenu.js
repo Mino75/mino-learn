@@ -138,27 +138,42 @@
 
 <script>
 
-    // Quiz Scripts (Updated)
+    // Shared function to check if a cell value is valid
+    function isValidCell(content) {
+        return content && !/^[a-zA-Z0-9\s\-\.,]*$/.test(content.trim());
+    }
+
     function startQuiz(isAdvanced) {
         const rows = Array.from(document.querySelectorAll("table tbody tr"));
+        const totalQuestions = 10;
+        let selectedQuestions = [];
 
-        // Filter rows: Ensure at least one valid CN, JP, or RU value exists.
-        const validRows = rows.filter(row => {
+        // Select 10 random questions
+        while (selectedQuestions.length < totalQuestions) {
+            const randomRowIndex = Math.floor(Math.random() * rows.length);
+            const row = rows[randomRowIndex];
             const cells = row.querySelectorAll("td");
-            const hasValidQuestion = cells[0].textContent.trim() && !/^[a-zA-Z0-9\s\-\.,]*$/.test(cells[0].textContent.trim());
-            const hasValidTranslation = [1, 2, 3].some(index => {
-                const content = cells[index].textContent.trim();
-                return content && !/^[a-zA-Z0-9\s\-\.,]*$/.test(content);
-            });
-            return hasValidQuestion && hasValidTranslation;
-        });
 
-        if (validRows.length < 10) {
-            alert("Not enough valid rows in the table for a quiz!");
-            return;
+            if (!cells.length) continue;
+
+            // Check if at least one valid answer exists in columns 1, 2, or 3
+            const validColumns = [1, 2, 3].filter(index => isValidCell(cells[index]?.textContent));
+            if (!validColumns.length) continue;
+
+            // Randomly select a valid column for the answer
+            const answerColumn = validColumns[Math.floor(Math.random() * validColumns.length)];
+            const questionText = cells[0]?.textContent.trim();
+            const correctAnswer = cells[answerColumn]?.textContent.trim();
+
+            if (isValidCell(questionText) && isValidCell(correctAnswer)) {
+                selectedQuestions.push({
+                    question: questionText,
+                    correctAnswer,
+                    column: answerColumn
+                });
+            }
         }
 
-        const randomRows = validRows.sort(() => 0.5 - Math.random()).slice(0, 10);
         let score = 0;
         let timer;
         let results = [];
@@ -168,41 +183,27 @@
         document.body.appendChild(quizContainer);
 
         function askQuestion(index) {
-            if (index >= randomRows.length) {
+            if (index >= selectedQuestions.length) {
                 showRecap();
                 return;
             }
 
-            const row = randomRows[index];
-            const cells = row.querySelectorAll("td");
-
-            // Always use the French line (column 0) as the question
-            const question = cells[0].textContent.trim();
-            const colIndex = [1, 2, 3].find(col => {
-                const content = cells[col]?.textContent.trim();
-                return content && !/^[a-zA-Z0-9\s\-\.,]*$/.test(content);
-            });
-
-            if (colIndex === undefined) {
-                askQuestion(index + 1); // Skip invalid row
-                return;
-            }
-
-            const correctAnswer = cells[colIndex].textContent.trim();
+            const currentQuestion = selectedQuestions[index];
+            const { question, correctAnswer, column } = currentQuestion;
 
             const cleanAnswer = isAdvanced ? correctAnswer
                 .normalize("NFD")
                 .replace(/[a-zA-Z0-9()\.\,~\u0300-\u036f]/g, "")
-                .replace(/\s+/g, " ") // Collapses multiple spaces into one
+                .replace(/\s+/g, " ")
                 .trim() : correctAnswer;
 
-            const allAnswers = validRows.map(r => {
-                const text = r.querySelectorAll("td")[colIndex].textContent.trim();
-                return isAdvanced ? text.normalize("NFD").replace(/[a-zA-Z0-9\s()\.\,~\u0300-\u036f]/g, "").trim() : text;
-            });
+            // Find incorrect answers in the same column
+            const allAnswers = rows.map(row => {
+                const cellContent = row.querySelectorAll("td")[column]?.textContent.trim();
+                return isAdvanced ? cellContent?.normalize("NFD").replace(/[a-zA-Z0-9\s()\.\,~\u0300-\u036f]/g, "").trim() : cellContent;
+            }).filter(answer => isValidCell(answer));
 
-            const incorrectAnswers = allAnswers.filter(answer => 
-                answer && answer !== cleanAnswer && !answer.match(/^\s*-+\s*$/) && !/^[a-zA-Z0-9\s]+$/.test(answer))
+            const incorrectAnswers = allAnswers.filter(answer => answer !== cleanAnswer)
                 .sort(() => 0.5 - Math.random()).slice(0, 3);
 
             const options = [cleanAnswer, ...incorrectAnswers].sort(() => 0.5 - Math.random());
@@ -214,7 +215,7 @@
                 applyStyles(timerDisplay, quizStyles.timerDisplay);
                 quizContainer.appendChild(timerDisplay);
 
-                let timeLeft = 14; // Display starts at 14 to give a 1s margin
+                let timeLeft = 14;
                 timerDisplay.textContent = `Time remaining: ${timeLeft + 1}s`;
                 timer = setInterval(() => {
                     timerDisplay.textContent = `Time remaining: ${timeLeft--}s`;
@@ -233,7 +234,7 @@
                 optionButton.addEventListener('click', () => {
                     clearTimeout(timer);
                     clearInterval(timer);
-                    let isCorrect = option === cleanAnswer;
+                    const isCorrect = option === cleanAnswer;
                     optionButton.style.backgroundColor = isCorrect ? "green" : "red";
                     optionButton.style.color = "white";
 
