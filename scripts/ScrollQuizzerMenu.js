@@ -101,17 +101,19 @@
     // CSS Styles for Quiz Elements
     const quizStyles = {
         quizContainer: {
-            position: "fixed",
-            top: "10%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "white",
-            padding: "20px",
-            border: "2px solid #007bff",
-            borderRadius: "10px",
-            zIndex: "2000",
-            maxWidth: "80%",
-            textAlign: "center",
+          position: "fixed",
+          top: "10%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: "white",
+          padding: "20px",
+          border: "2px solid #007bff",
+          borderRadius: "10px",
+          zIndex: "2000",
+          width: "90%",            // Adjusted width for mobile devices
+          maxHeight: "80vh",       // Limit height to 80% of viewport height
+          overflowY: "auto",       // Enable vertical scrolling if content overflows
+          textAlign: "center",
         },
         button: {
             margin: "10px",
